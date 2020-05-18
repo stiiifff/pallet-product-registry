@@ -1,15 +1,12 @@
+//! # Substrate Enterprise Sample - Product Registry example pallet
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/// A FRAME pallet template with necessary imports
-
-/// Feel free to remove or edit this file as needed.
-/// If you change the name of this file, make sure to update its references in runtime/src/lib.rs
-/// If you remove this file, you can remove those references
-
-/// For more guidance on Substrate FRAME, see the example pallet
-/// https://github.com/paritytech/substrate/blob/master/frame/example/src/lib.rs
-
-use frame_support::{decl_module, decl_storage, decl_event, decl_error, dispatch};
+use codec::{Decode, Encode};
+use frame_support::{
+    decl_error, decl_event, decl_module, decl_storage, dispatch, ensure, sp_runtime::RuntimeDebug,
+    sp_std::prelude::*,
+};
 use frame_system::{self as system, ensure_signed};
 
 #[cfg(test)]
@@ -18,92 +15,88 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-/// The pallet's configuration trait.
-pub trait Trait: system::Trait {
-	// Add other types and constants required to configure this pallet.
+pub const PRODUCT_ID_MAX_LENGTH: usize = 14;
 
-	/// The overarching event type.
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+pub type ProductId = Vec<u8>;
+pub type ValidationResult<R, T> = core::result::Result<R, Error<T>>;
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, RuntimeDebug)]
+pub struct Product<Moment> {
+    pub id: ProductId,
+    pub creation: Moment,
 }
 
-// This pallet's storage items.
+pub trait Trait: system::Trait + timestamp::Trait {
+    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+}
+
 decl_storage! {
-	// It is important to update your storage name so that your pallet's
-	// storage items are isolated from other pallets.
-	// ---------------------------------vvvvvvvvvvvvvv
-	trait Store for Module<T: Trait> as TemplateModule {
-		// Just a dummy storage item.
-		// Here we are declaring a StorageValue, `Something` as a Option<u32>
-		// `get(fn something)` is the default getter which returns either the stored `u32` or `None` if nothing stored
-		Something get(fn something): Option<u32>;
-	}
+    trait Store for Module<T: Trait> as ProductRegistry {
+        pub Products get(fn product_by_id): map hasher(blake2_128_concat) ProductId => Option<Product<T::Moment>>;
+    }
 }
 
-// The pallet's events
 decl_event!(
-	pub enum Event<T> where AccountId = <T as system::Trait>::AccountId {
-		/// Just a dummy event.
-		/// Event `Something` is declared with a parameter of the type `u32` and `AccountId`
-		/// To emit this event, we call the deposit function, from our runtime functions
-		SomethingStored(u32, AccountId),
-	}
+    pub enum Event<T>
+    where
+        AccountId = <T as system::Trait>::AccountId,
+    {
+        ProductCreated(AccountId, ProductId),
+    }
 );
 
-// The pallet's errors
 decl_error! {
-	pub enum Error for Module<T: Trait> {
-		/// Value was None
-		NoneValue,
-		/// Value reached maximum and cannot be incremented further
-		StorageOverflow,
-	}
+    pub enum Error for Module<T: Trait> {
+        ProductIdMissing,
+        ProductIdTooLong,
+        ProductIdExists
+    }
 }
 
-// The pallet's dispatchable functions.
 decl_module! {
-	/// The module declaration.
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		// Initializing errors
-		// this includes information about your errors in the node's metadata.
-		// it is needed only if you are using errors in your pallet
-		type Error = Error<T>;
+    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+        type Error = Error<T>;
+        fn deposit_event() = default;
 
-		// Initializing events
-		// this is needed only if you are using events in your pallet
-		fn deposit_event() = default;
+        #[weight = 10_000]
+        pub fn create_product(origin, id: ProductId) -> dispatch::DispatchResult {
+            let who = ensure_signed(origin)?;
 
-		/// Just a dummy entry point.
-		/// function that can be called by the external world as an extrinsics call
-		/// takes a parameter of the type `AccountId`, stores it, and emits an event
-		#[weight = 10_000]
-		pub fn do_something(origin, something: u32) -> dispatch::DispatchResult {
-			// Check it was signed and get the signer. See also: ensure_root and ensure_none
-			let who = ensure_signed(origin)?;
+            // Validate product ID
+            Self::validate_product_id(&id)?;
 
-			// Code to execute when something calls this.
-			// For example: the following line stores the passed in u32 in the storage
-			Something::put(something);
+            // Check product doesn't exist yet
+            // Note: 1 DB read
+            Self::validate_new_product(&id)?;
 
-			// Here we are raising the Something event
-			Self::deposit_event(RawEvent::SomethingStored(something, who));
-			Ok(())
-		}
+            // Add product (1 DB write)
+            <Products<T>>::insert(&id, Product {
+                id: id.clone(), creation: <timestamp::Module<T>>::now()
+            });
 
-		/// Another dummy entry point.
-		/// takes no parameters, attempts to increment storage value, and possibly throws an error
-		#[weight = 10_000]
-		pub fn cause_error(origin) -> dispatch::DispatchResult {
-			// Check it was signed and get the signer. See also: ensure_root and ensure_none
-			let _who = ensure_signed(origin)?;
+            Self::deposit_event(RawEvent::ProductCreated(who, id));
 
-			match Something::get() {
-				None => Err(Error::<T>::NoneValue)?,
-				Some(old) => {
-					let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
-					Something::put(new);
-					Ok(())
-				},
-			}
-		}
-	}
+            Ok(())
+        }
+    }
+}
+
+impl<T: Trait> Module<T> {
+    // Helpers
+    pub fn validate_product_id(id: &[u8]) -> ValidationResult<(), T> {
+        ensure!(id.len() > 0, Error::<T>::ProductIdMissing);
+        ensure!(
+            id.len() <= PRODUCT_ID_MAX_LENGTH,
+            Error::<T>::ProductIdTooLong
+        );
+        Ok(())
+    }
+
+    pub fn validate_new_product(id: &[u8]) -> ValidationResult<(), T> {
+        ensure!(
+            !<Products<T>>::contains_key(id),
+            Error::<T>::ProductIdExists
+        );
+        Ok(())
+    }
 }
