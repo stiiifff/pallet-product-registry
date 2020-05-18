@@ -1,26 +1,81 @@
 // Tests to be written here
 
-use crate::{Error, mock::*};
-use frame_support::{assert_ok, assert_noop};
+use super::*;
+use crate::{mock::*, Error};
+use frame_support::{assert_noop, assert_ok, dispatch};
+
+pub fn store_test_product<T: Trait>(id: ProductId, creation: T::Moment) {
+    Products::<T>::insert(id.clone(), Product { id, creation });
+}
+
+const TEST_PRODUCT_ID: &str = "00012345600012";
+const LONG_VALUE : &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec aliquam ut tortor nec congue. Pellente";
 
 #[test]
-fn it_works_for_default_value() {
-	new_test_ext().execute_with(|| {
-		// Just a dummy test for the dummy function `do_something`
-		// calling the `do_something` function with a value 42
-		assert_ok!(TemplateModule::do_something(Origin::signed(1), 42));
-		// asserting that the stored value is equal to what we stored
-		assert_eq!(TemplateModule::something(), Some(42));
-	});
+fn create_product_with_valid_args() {
+    new_test_ext().execute_with(|| {
+        let sender = 1;
+        let id = String::from(TEST_PRODUCT_ID).into_bytes();
+        let now = 42;
+        Timestamp::set_timestamp(now);
+
+        let result = ProductRegistry::create_product(Origin::signed(sender), id.clone());
+
+        assert_ok!(result);
+
+        assert_eq!(
+            ProductRegistry::product_by_id(&id),
+            Some(Product {
+                id: id.clone(),
+                creation: now
+            })
+        );
+    });
 }
 
 #[test]
-fn correct_error_for_none_value() {
-	new_test_ext().execute_with(|| {
-		// Ensure the correct error is thrown on None value
-		assert_noop!(
-			TemplateModule::cause_error(Origin::signed(1)),
-			Error::<Test>::NoneValue
-		);
-	});
+fn create_product_with_invalid_sender() {
+    new_test_ext().execute_with(|| {
+        assert_noop!(
+            ProductRegistry::create_product(Origin::NONE, vec!()),
+            dispatch::DispatchError::BadOrigin
+        );
+    });
+}
+
+#[test]
+fn create_product_with_missing_id() {
+    new_test_ext().execute_with(|| {
+        assert_noop!(
+            ProductRegistry::create_product(Origin::signed(1), vec!()),
+            Error::<Test>::ProductIdMissing
+        );
+    });
+}
+
+#[test]
+fn create_product_with_long_id() {
+    new_test_ext().execute_with(|| {
+        assert_noop!(
+            ProductRegistry::create_product(
+                Origin::signed(1),
+                String::from(LONG_VALUE).into_bytes()
+            ),
+            Error::<Test>::ProductIdTooLong
+        );
+    })
+}
+
+#[test]
+fn create_product_with_existing_id() {
+    new_test_ext().execute_with(|| {
+        let existing_product = String::from(TEST_PRODUCT_ID).into_bytes();
+        let now = 42;
+        store_test_product::<Test>(existing_product.clone(), now);
+
+        assert_noop!(
+            ProductRegistry::create_product(Origin::signed(1), existing_product),
+            Error::<Test>::ProductIdExists
+        );
+    })
 }
