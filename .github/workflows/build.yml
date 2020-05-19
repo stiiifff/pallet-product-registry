@@ -38,14 +38,14 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Check Formatting
-        run: cargo fmt --all -- --check
-
-      - name: Unleash clippy
-        run: cargo clippy -- -D warnings -A deprecated
-
       - name: Build Native
         run: cargo build
 
       - name: Build Wasm
         run: cargo build --target wasm32-unknown-unknown
+
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Unleash clippy
+        run: cargo clippy -- -D warnings -A deprecated
