@@ -84,7 +84,7 @@ decl_module! {
 impl<T: Trait> Module<T> {
     // Helpers
     pub fn validate_product_id(id: &[u8]) -> ValidationResult<(), T> {
-        ensure!(id.len() > 0, Error::<T>::ProductIdMissing);
+        ensure!(!id.is_empty(), Error::<T>::ProductIdMissing);
         ensure!(
             id.len() <= PRODUCT_ID_MAX_LENGTH,
             Error::<T>::ProductIdTooLong
