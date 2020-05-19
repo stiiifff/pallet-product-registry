@@ -14,7 +14,8 @@ jobs:
       - uses: hecrj/setup-rust-action@v1
         with:
           rust-version: ${{ matrix.rust }}
-          components: clippy, rustfmt, wasm32-unknown-unknown
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
       
       - name: Checkout sources
         uses: actions/checkout@v1
