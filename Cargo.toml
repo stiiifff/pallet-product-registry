@@ -1,6 +1,6 @@
 [package]
 authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
-description = 'Substrate Enterprise Sample - Product Registry example pallet'
+description = 'Substrate Enterprise Sample - Product Registry pallet'
 edition = '2018'
 homepage = 'https://substrate.io'
 license = 'Unlicense'
