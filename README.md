@@ -6,8 +6,19 @@ When this pallet is added to a Subtrate runtime, other custom Substrate pallets 
 
 This pallet is part of the [Substrate Enterprise sample](https://github.com/gautamdhameja/substrate-enterprise-sample).
 
-NOTE: This pallet is intended for demonstration purposes and is not audited or ready for production use.
+It is inspired by existing projects & standards:
+- [IBM Food Trust](https://github.com/IBM/IFT-Developer-Zone/wiki/APIs)
+- [Hyperledger Grid](https://www.hyperledger.org/use/grid)
+- [GS1 Standards](https://www.gs1.org/standards)
 
+NOTE: This pallet implements the aforementionned process in a simplified way, thus it is intended for demonstration purposes and is not audited or ready for production use.
+
+## Usage
+
+To register a product, one must send a transaction with a `productRegistry.registerProduct` extrinsic with the following arguments:
+- `id` as the Product ID, typically this would be a GS1 GTIN (Global Trade Item Number), or ASIN (Amazon Standard Identification Number), or similar, a numeric or alpha-numeric code with a well-defined data structure.
+- `owner` as the Substrate Account representing the organization owning this product, as in the manufacturer or supplier providing this product within the value chain.
+- `props` which is a series of properties (name & value) describing the product. Typically, there would at least be a textual description, and SKU. It could also contain instance / lot master data e.g. expiration, weight, harvest date.
 
 ## Dependencies
 
@@ -27,7 +38,7 @@ Run the tests with:
     cargo test
     ```
 
-## Installation
+## How to use in your runtime
 
 ### Runtime `Cargo.toml`
 
