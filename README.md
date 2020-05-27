@@ -1,16 +1,13 @@
-# Substrate Enterprise Sample - Product Registry pallet
+# Substrate Product Registry pallet
 
-This is a template for a Substrate pallet which lives as its own crate so it can be imported into multiple runtimes. It is based on the ["template" pallet](https://github.com/paritytech/substrate/tree/master/bin/node-template/pallets/template) that is included with the [Substrate node template](https://github.com/paritytech/substrate/tree/master/bin/node-template).
+The Product Registry pallet provides functionality for registering and managing master data (aka class-level) about products / trade items exchanged in a supply chain between various stakeholders. This data is typically registered once by the product's manufacturer / supplier to be shared with other network participants.
 
-Check out the [HOWTO](HOWTO.md) to learn how to use this for your own runtime module.
+When this pallet is added to a Subtrate runtime, other custom Substrate pallets can then implement additional business logic leveraging this Product Registry pallet as a reference for known products and their owning organizations.
 
-This README should act as a general template for distributing your pallet to others.
+This pallet is part of the [Substrate Enterprise sample](https://github.com/gautamdhameja/substrate-enterprise-sample).
 
-## Purpose
+NOTE: This pallet is intended for demonstration purposes and is not audited or ready for production use.
 
-This pallet acts as a template for building other pallets.
-
-It currently allows a user to put a `u32` value into storage, which triggers a runtime event.
 
 ## Dependencies
 
@@ -20,7 +17,15 @@ This pallet does not depend on any externally defined traits.
 
 ### Pallets
 
-This pallet does not depend on any other FRAME pallet or externally developed modules.
+This pallet depends on on the [FRAME Timestamp pallet](https://docs.rs/crate/pallet-timestamp).
+
+## Testing
+
+Run the tests with:
+
+    ```
+    cargo test
+    ```
 
 ## Installation
 
@@ -29,9 +34,10 @@ This pallet does not depend on any other FRAME pallet or externally developed mo
 To add this pallet to your runtime, simply include the following to your runtime's `Cargo.toml` file:
 
 ```TOML
-[dependencies.substrate-pallet-template]
+[dependencies.product-registry]
+package = 'pallet-product-registry'
 default_features = false
-git = 'https://github.com/substrate-developer-hub/substrate-pallet-template.git'
+git = 'https://github.com/stiiifff/pallet-product-registry.git'
 ```
 
 and update your runtime's `std` feature to include this pallet:
@@ -39,7 +45,7 @@ and update your runtime's `std` feature to include this pallet:
 ```TOML
 std = [
     # --snip--
-    'example_pallet/std',
+    'product-registry/std',
 ]
 ```
 
@@ -49,7 +55,7 @@ You should implement it's trait like so:
 
 ```rust
 /// Used for test_module
-impl example_pallet::Trait for Runtime {
+impl product_registry::Trait for Runtime {
 	type Event = Event;
 }
 ```
@@ -57,7 +63,7 @@ impl example_pallet::Trait for Runtime {
 and include it in your `construct_runtime!` macro:
 
 ```rust
-ExamplePallet: substrate_pallet_template::{Module, Call, Storage, Event<T>},
+ProductRegistry: product_registry::{Module, Call, Storage, Event<T>},
 ```
 
 ### Genesis Configuration
@@ -71,5 +77,3 @@ You can view the reference docs for this pallet by running:
 ```
 cargo doc --open
 ```
-
-or by visiting this site: <Add Your Link>
