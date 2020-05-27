@@ -4,13 +4,14 @@ use super::*;
 use crate::{mock::*, Error};
 use frame_support::{assert_noop, assert_ok, dispatch};
 
-pub fn store_test_product<T: Trait>(id: ProductId, owner: T::AccountId, creation: T::Moment) {
+pub fn store_test_product<T: Trait>(id: ProductId, owner: T::AccountId, registered: T::Moment) {
     Products::<T>::insert(
         id.clone(),
         Product {
             id,
             owner,
-            creation,
+            registered,
+            props: None,
         },
     );
 }
@@ -21,30 +22,74 @@ const TEST_SENDER: &str = "Alice";
 const LONG_VALUE : &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec aliquam ut tortor nec congue. Pellente";
 
 #[test]
-fn create_product_with_valid_args() {
+fn create_product_without_props() {
     new_test_ext().execute_with(|| {
         let sender = account_key(TEST_SENDER);
+        let id = TEST_PRODUCT_ID.as_bytes().to_owned();
         let owner = account_key(TEST_ORGANIZATION);
-        let product_id = String::from(TEST_PRODUCT_ID).into_bytes();
         let now = 42;
         Timestamp::set_timestamp(now);
 
-        let result = ProductRegistry::create_product(
+        let result = ProductRegistry::register_product(
             Origin::signed(sender),
+            id.clone(),
             owner.clone(),
-            product_id.clone(),
+            None,
         );
 
         assert_ok!(result);
 
         assert_eq!(
-            ProductRegistry::product_by_id(&product_id),
+            ProductRegistry::product_by_id(&id),
             Some(Product {
-                id: product_id,
+                id: id.clone(),
                 owner: owner,
-                creation: now
+                registered: now,
+                props: None
             })
         );
+
+        assert_eq!(ProductRegistry::owner_of(&id), Some(owner));
+    });
+}
+
+#[test]
+fn create_product_with_valid_props() {
+    new_test_ext().execute_with(|| {
+        let sender = account_key(TEST_SENDER);
+        let id = TEST_PRODUCT_ID.as_bytes().to_owned();
+        let owner = account_key(TEST_ORGANIZATION);
+        let now = 42;
+        Timestamp::set_timestamp(now);
+
+        let result = ProductRegistry::register_product(
+            Origin::signed(sender),
+            id.clone(),
+            owner.clone(),
+            Some(vec![
+                ProductProperty::new(b"prop1", b"val1"),
+                ProductProperty::new(b"prop2", b"val2"),
+                ProductProperty::new(b"prop3", b"val3"),
+            ]),
+        );
+
+        assert_ok!(result);
+
+        assert_eq!(
+            ProductRegistry::product_by_id(&id),
+            Some(Product {
+                id: id.clone(),
+                owner: owner,
+                registered: now,
+                props: Some(vec![
+                    ProductProperty::new(b"prop1", b"val1"),
+                    ProductProperty::new(b"prop2", b"val2"),
+                    ProductProperty::new(b"prop3", b"val3"),
+                ]),
+            })
+        );
+
+        assert_eq!(ProductRegistry::owner_of(&id), Some(owner));
     });
 }
 
@@ -52,7 +97,12 @@ fn create_product_with_valid_args() {
 fn create_product_with_invalid_sender() {
     new_test_ext().execute_with(|| {
         assert_noop!(
-            ProductRegistry::create_product(Origin::NONE, account_key(TEST_ORGANIZATION), vec!()),
+            ProductRegistry::register_product(
+                Origin::NONE,
+                vec!(),
+                account_key(TEST_ORGANIZATION),
+                None
+            ),
             dispatch::DispatchError::BadOrigin
         );
     });
@@ -62,10 +112,11 @@ fn create_product_with_invalid_sender() {
 fn create_product_with_missing_id() {
     new_test_ext().execute_with(|| {
         assert_noop!(
-            ProductRegistry::create_product(
+            ProductRegistry::register_product(
                 Origin::signed(account_key(TEST_SENDER)),
+                vec!(),
                 account_key(TEST_ORGANIZATION),
-                vec!()
+                None
             ),
             Error::<Test>::ProductIdMissing
         );
@@ -76,10 +127,11 @@ fn create_product_with_missing_id() {
 fn create_product_with_long_id() {
     new_test_ext().execute_with(|| {
         assert_noop!(
-            ProductRegistry::create_product(
+            ProductRegistry::register_product(
                 Origin::signed(account_key(TEST_SENDER)),
+                LONG_VALUE.as_bytes().to_owned(),
                 account_key(TEST_ORGANIZATION),
-                String::from(LONG_VALUE).into_bytes()
+                None
             ),
             Error::<Test>::ProductIdTooLong
         );
@@ -89,8 +141,9 @@ fn create_product_with_long_id() {
 #[test]
 fn create_product_with_existing_id() {
     new_test_ext().execute_with(|| {
-        let existing_product = String::from(TEST_PRODUCT_ID).into_bytes();
+        let existing_product = TEST_PRODUCT_ID.as_bytes().to_owned();
         let now = 42;
+
         store_test_product::<Test>(
             existing_product.clone(),
             account_key(TEST_ORGANIZATION),
@@ -98,12 +151,71 @@ fn create_product_with_existing_id() {
         );
 
         assert_noop!(
-            ProductRegistry::create_product(
+            ProductRegistry::register_product(
                 Origin::signed(account_key(TEST_SENDER)),
+                existing_product,
                 account_key(TEST_ORGANIZATION),
-                existing_product
+                None
             ),
             Error::<Test>::ProductIdExists
+        );
+    })
+}
+
+#[test]
+fn create_product_with_too_many_props() {
+    new_test_ext().execute_with(|| {
+        assert_noop!(
+            ProductRegistry::register_product(
+                Origin::signed(account_key(TEST_SENDER)),
+                TEST_PRODUCT_ID.as_bytes().to_owned(),
+                account_key(TEST_ORGANIZATION),
+                Some(vec![
+                    ProductProperty::new(b"prop1", b"val1"),
+                    ProductProperty::new(b"prop2", b"val2"),
+                    ProductProperty::new(b"prop3", b"val3"),
+                    ProductProperty::new(b"prop4", b"val4")
+                ])
+            ),
+            Error::<Test>::ProductTooManyProps
+        );
+    })
+}
+
+#[test]
+fn create_product_with_invalid_prop_name() {
+    new_test_ext().execute_with(|| {
+        assert_noop!(
+            ProductRegistry::register_product(
+                Origin::signed(account_key(TEST_SENDER)),
+                TEST_PRODUCT_ID.as_bytes().to_owned(),
+                account_key(TEST_ORGANIZATION),
+                Some(vec![
+                    ProductProperty::new(b"prop1", b"val1"),
+                    ProductProperty::new(b"prop2", b"val2"),
+                    ProductProperty::new(&LONG_VALUE.as_bytes().to_owned(), b"val3"),
+                ])
+            ),
+            Error::<Test>::ProductInvalidPropName
+        );
+    })
+}
+
+#[test]
+fn create_product_with_invalid_prop_value() {
+    new_test_ext().execute_with(|| {
+        assert_noop!(
+            ProductRegistry::register_product(
+                Origin::signed(account_key(TEST_SENDER)),
+                TEST_PRODUCT_ID.as_bytes().to_owned(),
+                account_key(TEST_ORGANIZATION),
+                Some(vec![
+                    ProductProperty::new(b"prop1", b"val1"),
+                    ProductProperty::new(b"prop2", b"val2"),
+                    ProductProperty::new(b"prop3", &LONG_VALUE.as_bytes().to_owned()),
+                ])
+            ),
+            Error::<Test>::ProductInvalidPropValue
         );
     })
 }
