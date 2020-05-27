@@ -20,13 +20,26 @@ mod tests;
 // or ASIN (Amazon Standard Identification Number), or similar,
 // a numeric or alpha-numeric code with a well-defined data structure.
 pub const PRODUCT_ID_MAX_LENGTH: usize = 14;
+pub const PRODUCT_PROP_NAME_MAX_LENGTH: usize = 10;
+pub const PRODUCT_PROP_VALUE_MAX_LENGTH: usize = 20;
+pub const PRODUCT_MAX_PROPS: usize = 3;
+
 pub type ProductId = Vec<u8>;
+pub type PropName = Vec<u8>;
+pub type PropValue = Vec<u8>;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
 pub struct Product<AccountId, Moment> {
-    pub id: ProductId,
-    pub owner: AccountId,
-    pub creation: Moment,
+    id: ProductId,
+    owner: AccountId,
+    props: Option<Vec<ProductProperty>>,
+    registered: Moment,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
+pub struct ProductProperty {
+    name: PropName,
+    value: PropValue,
 }
 
 pub trait Trait: system::Trait + timestamp::Trait {
@@ -36,6 +49,7 @@ pub trait Trait: system::Trait + timestamp::Trait {
 decl_storage! {
     trait Store for Module<T: Trait> as ProductRegistry {
         pub Products get(fn product_by_id): map hasher(blake2_128_concat) ProductId => Option<Product<T::AccountId, T::Moment>>;
+        pub OwnerOf get(fn owner_of): map hasher(blake2_128_concat) ProductId => Option<T::AccountId>;
     }
 }
 
@@ -44,7 +58,7 @@ decl_event!(
     where
         AccountId = <T as system::Trait>::AccountId,
     {
-        ProductCreated(AccountId, AccountId, ProductId),
+        ProductRegistered(AccountId, ProductId, AccountId),
     }
 );
 
@@ -62,33 +76,35 @@ decl_module! {
         fn deposit_event() = default;
 
         #[weight = 10_000]
-        pub fn create_product(origin, owner: T::AccountId, product_id: ProductId) -> dispatch::DispatchResult {
+        pub fn register_product(origin, id: ProductId, owner: T::AccountId, props: Option<Vec<ProductProperty>>) -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
 
             // TODO: assuming owner is a DID representing an organization,
             //       validate tx sender is owner or delegate of organization.
 
             // Validate product ID
-            Self::validate_product_id(&product_id)?;
+            Self::validate_product_id(&id)?;
 
             // Check product doesn't exist yet (1 DB read)
-            Self::validate_new_product(&product_id)?;
+            Self::validate_new_product(&id)?;
 
             // TODO: if organization has an attribute w/ GS1 Company prefix,
             //       additional validation could be applied to the product ID
-            //       to ensure it is valid (same company prefix as org).
+            //       to ensure its validity (same company prefix as org).
 
             // Create a product instance
             let product = Self::new_product()
-                .identified_by(product_id.clone())
+                .identified_by(id.clone())
                 .owned_by(owner.clone())
-                .created_on(<timestamp::Module<T>>::now())
+                .registered_on(<timestamp::Module<T>>::now())
+                .with_props(props)
                 .build();
 
-            // Add product (1 DB write)
-            <Products<T>>::insert(&product_id, product);
+            // Add product & ownerOf (2 DB writes)
+            <Products<T>>::insert(&id, product);
+            <OwnerOf<T>>::insert(&id, &owner);
 
-            Self::deposit_event(RawEvent::ProductCreated(who, owner, product_id));
+            Self::deposit_event(RawEvent::ProductRegistered(who, id, owner));
 
             Ok(())
         }
@@ -129,7 +145,8 @@ where
 {
     id: ProductId,
     owner: AccountId,
-    creation: Moment,
+    props: Option<Vec<ProductProperty>>,
+    registered: Moment,
 }
 
 impl<AccountId, Moment> ProductBuilder<AccountId, Moment>
@@ -147,8 +164,13 @@ where
         self
     }
 
-    pub fn created_on(mut self, creation: Moment) -> Self {
-        self.creation = creation;
+    pub fn with_props(mut self, props: Option<Vec<ProductProperty>>) -> Self {
+        self.props = props;
+        self
+    }
+
+    pub fn registered_on(mut self, registered: Moment) -> Self {
+        self.registered = registered;
         self
     }
 
@@ -156,7 +178,8 @@ where
         Product::<AccountId, Moment> {
             id: self.id,
             owner: self.owner,
-            creation: self.creation,
+            props: self.props,
+            registered: self.registered,
         }
     }
 }

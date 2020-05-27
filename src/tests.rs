@@ -4,13 +4,14 @@ use super::*;
 use crate::{mock::*, Error};
 use frame_support::{assert_noop, assert_ok, dispatch};
 
-pub fn store_test_product<T: Trait>(id: ProductId, owner: T::AccountId, creation: T::Moment) {
+pub fn store_test_product<T: Trait>(id: ProductId, owner: T::AccountId, registered: T::Moment) {
     Products::<T>::insert(
         id.clone(),
         Product {
             id,
             owner,
-            creation,
+            registered,
+            props: None,
         },
     );
 }
@@ -24,27 +25,31 @@ const LONG_VALUE : &str = "Lorem ipsum dolor sit amet, consectetur adipiscing el
 fn create_product_with_valid_args() {
     new_test_ext().execute_with(|| {
         let sender = account_key(TEST_SENDER);
+        let id = String::from(TEST_PRODUCT_ID).into_bytes();
         let owner = account_key(TEST_ORGANIZATION);
-        let product_id = String::from(TEST_PRODUCT_ID).into_bytes();
         let now = 42;
         Timestamp::set_timestamp(now);
 
-        let result = ProductRegistry::create_product(
+        let result = ProductRegistry::register_product(
             Origin::signed(sender),
+            id.clone(),
             owner.clone(),
-            product_id.clone(),
+            None,
         );
 
         assert_ok!(result);
 
         assert_eq!(
-            ProductRegistry::product_by_id(&product_id),
+            ProductRegistry::product_by_id(&id),
             Some(Product {
-                id: product_id,
+                id: id.clone(),
                 owner: owner,
-                creation: now
+                registered: now,
+                props: None
             })
         );
+
+        assert_eq!(ProductRegistry::owner_of(&id), Some(owner));
     });
 }
 
@@ -52,7 +57,12 @@ fn create_product_with_valid_args() {
 fn create_product_with_invalid_sender() {
     new_test_ext().execute_with(|| {
         assert_noop!(
-            ProductRegistry::create_product(Origin::NONE, account_key(TEST_ORGANIZATION), vec!()),
+            ProductRegistry::register_product(
+                Origin::NONE,
+                vec!(),
+                account_key(TEST_ORGANIZATION),
+                None
+            ),
             dispatch::DispatchError::BadOrigin
         );
     });
@@ -62,10 +72,11 @@ fn create_product_with_invalid_sender() {
 fn create_product_with_missing_id() {
     new_test_ext().execute_with(|| {
         assert_noop!(
-            ProductRegistry::create_product(
+            ProductRegistry::register_product(
                 Origin::signed(account_key(TEST_SENDER)),
+                vec!(),
                 account_key(TEST_ORGANIZATION),
-                vec!()
+                None
             ),
             Error::<Test>::ProductIdMissing
         );
@@ -76,10 +87,11 @@ fn create_product_with_missing_id() {
 fn create_product_with_long_id() {
     new_test_ext().execute_with(|| {
         assert_noop!(
-            ProductRegistry::create_product(
+            ProductRegistry::register_product(
                 Origin::signed(account_key(TEST_SENDER)),
+                String::from(LONG_VALUE).into_bytes(),
                 account_key(TEST_ORGANIZATION),
-                String::from(LONG_VALUE).into_bytes()
+                None
             ),
             Error::<Test>::ProductIdTooLong
         );
@@ -98,10 +110,11 @@ fn create_product_with_existing_id() {
         );
 
         assert_noop!(
-            ProductRegistry::create_product(
+            ProductRegistry::register_product(
                 Origin::signed(account_key(TEST_SENDER)),
+                existing_product,
                 account_key(TEST_ORGANIZATION),
-                existing_product
+                None
             ),
             Error::<Test>::ProductIdExists
         );
