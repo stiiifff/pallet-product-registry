@@ -1,15 +1,12 @@
 [package]
-authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
+name = 'pallet-product-registry'
+version = '2.0.0-rc3'
 description = 'Substrate Enterprise Sample - Product Registry pallet'
 edition = '2018'
-homepage = 'https://substrate.io'
-license = 'Unlicense'
-name = 'pallet-product-registry'
+authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
+homepage = 'https://substrate.dev'
 repository = 'https://github.com/paritytech/substrate/'
-version = '0.0.1'
-
-[package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+license = 'Unlicense'
 
 [dependencies.codec]
 default-features = false
