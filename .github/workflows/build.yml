@@ -1,15 +1,11 @@
-name: server
+name: build
 
 on: [pull_request]
 
 jobs:
-  lint:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        rust: [stable]
 
+  setup:
+    runs-on: ubuntu-latest
     steps:
       - uses: hecrj/setup-rust-action@v1
         with:
@@ -19,7 +15,11 @@ jobs:
       
       - name: Checkout sources
         uses: actions/checkout@v1
-      
+
+  cache:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
       # Steps taken from https://github.com/actions/cache/blob/master/examples.md#rust---cargo
       - name: Cache cargo registry
         uses: actions/cache@v1
@@ -39,14 +39,37 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Build Native
-        run: cargo build
-
-      - name: Build Wasm
-        run: cargo build --target wasm32-unknown-unknown
-
+  lint:
+    needs: cache
+    runs-on: ubuntu-latest
+    steps:
       - name: Check Formatting
         run: cargo fmt --all -- --check
 
-      # - name: Unleash clippy
-      #   run: cargo clippy -- -D warnings -A deprecated
+  clippy:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Unleash clippy
+        run: cargo clippy -- -D warnings -A deprecated
+
+  build-native:
+    needs: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Native
+        run: cargo build
+
+  build-wasm:
+    needs: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Wasm
+        run: cargo build --target wasm32-unknown-unknown
+
+  test:
+    needs: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run tests
+        run: cargo test
