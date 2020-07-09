@@ -98,7 +98,7 @@ fn create_product_with_invalid_sender() {
     new_test_ext().execute_with(|| {
         assert_noop!(
             ProductRegistry::register_product(
-                Origin::NONE,
+                Origin::none(),
                 vec!(),
                 account_key(TEST_ORGANIZATION),
                 None
