@@ -4,7 +4,7 @@ on: [pull_request]
 
 jobs:
 
-  setup:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - uses: hecrj/setup-rust-action@v1
@@ -16,10 +16,6 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v1
 
-  cache:
-    needs: setup
-    runs-on: ubuntu-latest
-    steps:
       # Steps taken from https://github.com/actions/cache/blob/master/examples.md#rust---cargo
       - name: Cache cargo registry
         uses: actions/cache@v1
@@ -39,37 +35,17 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-  lint:
-    needs: cache
-    runs-on: ubuntu-latest
-    steps:
       - name: Check Formatting
         run: cargo fmt --all -- --check
 
-  clippy:
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
       - name: Unleash clippy
         run: cargo clippy -- -D warnings -A deprecated
 
-  build-native:
-    needs: clippy
-    runs-on: ubuntu-latest
-    steps:
       - name: Build Native
         run: cargo build
 
-  build-wasm:
-    needs: clippy
-    runs-on: ubuntu-latest
-    steps:
       - name: Build Wasm
         run: cargo build --target wasm32-unknown-unknown
 
-  test:
-    needs: clippy
-    runs-on: ubuntu-latest
-    steps:
       - name: Run tests
         run: cargo test
