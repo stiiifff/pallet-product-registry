@@ -50,6 +50,10 @@ fn create_product_without_props() {
         );
 
         assert_eq!(ProductRegistry::owner_of(&id), Some(owner));
+
+        // Event is raised
+        assert!(System::events().iter().any(|er| er.event
+            == TestEvent::product_registry(RawEvent::ProductRegistered(sender, id.clone(), owner))));
     });
 }
 
@@ -90,6 +94,10 @@ fn create_product_with_valid_props() {
         );
 
         assert_eq!(ProductRegistry::owner_of(&id), Some(owner));
+
+        // Event is raised
+        assert!(System::events().iter().any(|er| er.event
+            == TestEvent::product_registry(RawEvent::ProductRegistered(sender, id.clone(), owner))));
     });
 }
 
