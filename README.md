@@ -46,9 +46,10 @@ To add this pallet to your runtime, simply include the following to your runtime
 
 ```TOML
 [dependencies.product-registry]
-package = 'pallet-product-registry'
 default_features = false
 git = 'https://github.com/stiiifff/pallet-product-registry.git'
+package = 'pallet-product-registry'
+version = '2.0.0-rc4'
 ```
 
 and update your runtime's `std` feature to include this pallet:
