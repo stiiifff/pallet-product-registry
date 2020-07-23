@@ -49,10 +49,7 @@ fn create_product_without_props() {
             })
         );
 
-        assert_eq!(
-            <ProductsOfOrganization<Test>>::get(owner),
-            vec![id.clone()]
-        );
+        assert_eq!(<ProductsOfOrganization<Test>>::get(owner), vec![id.clone()]);
 
         assert_eq!(ProductRegistry::owner_of(&id), Some(owner));
 
@@ -102,10 +99,7 @@ fn create_product_with_valid_props() {
             })
         );
 
-        assert_eq!(
-            <ProductsOfOrganization<Test>>::get(owner),
-            vec![id.clone()]
-        );
+        assert_eq!(<ProductsOfOrganization<Test>>::get(owner), vec![id.clone()]);
 
         assert_eq!(ProductRegistry::owner_of(&id), Some(owner));
 
