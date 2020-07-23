@@ -82,6 +82,7 @@ pub trait Trait: system::Trait + timestamp::Trait {
 decl_storage! {
     trait Store for Module<T: Trait> as ProductRegistry {
         pub Products get(fn product_by_id): map hasher(blake2_128_concat) ProductId => Option<Product<T::AccountId, T::Moment>>;
+        pub ProductsOfOrganization get(fn products_of_org): map hasher(blake2_128_concat) T::AccountId => Vec<ProductId>;
         pub OwnerOf get(fn owner_of): map hasher(blake2_128_concat) ProductId => Option<T::AccountId>;
     }
 }
@@ -139,8 +140,9 @@ decl_module! {
                 .with_props(props)
                 .build();
 
-            // Add product & ownerOf (2 DB writes)
+            // Add product & ownerOf (3 DB writes)
             <Products<T>>::insert(&id, product);
+            <ProductsOfOrganization<T>>::append(&owner, &id);
             <OwnerOf<T>>::insert(&id, &owner);
 
             Self::deposit_event(RawEvent::ProductRegistered(who, id, owner));
