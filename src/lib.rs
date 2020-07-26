@@ -6,8 +6,7 @@ use codec::{Decode, Encode};
 use core::result::Result;
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch, ensure, sp_runtime::RuntimeDebug,
-    sp_std::prelude::*,
-    traits::EnsureOrigin,
+    sp_std::prelude::*, traits::EnsureOrigin,
 };
 use frame_system::{self as system, ensure_signed};
 
