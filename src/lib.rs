@@ -119,9 +119,6 @@ decl_module! {
             T::CreateRoleOrigin::ensure_origin(origin.clone())?;
             let who = ensure_signed(origin)?;
 
-            // TODO: assuming owner is a DID representing an organization,
-            //       validate tx sender is owner or delegate of organization.
-
             // Validate product ID
             Self::validate_product_id(&id)?;
 
