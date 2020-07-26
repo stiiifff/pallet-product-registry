@@ -7,6 +7,7 @@ use core::result::Result;
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch, ensure, sp_runtime::RuntimeDebug,
     sp_std::prelude::*,
+    traits::EnsureOrigin,
 };
 use frame_system::{self as system, ensure_signed};
 
@@ -77,6 +78,7 @@ impl ProductProperty {
 
 pub trait Trait: system::Trait + timestamp::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type CreateRoleOrigin: EnsureOrigin<Self::Origin>;
 }
 
 decl_storage! {
@@ -114,6 +116,7 @@ decl_module! {
 
         #[weight = 10_000]
         pub fn register_product(origin, id: ProductId, owner: T::AccountId, props: Option<Vec<ProductProperty>>) -> dispatch::DispatchResult {
+            T::CreateRoleOrigin::ensure_origin(origin.clone())?;
             let who = ensure_signed(origin)?;
 
             // TODO: assuming owner is a DID representing an organization,
