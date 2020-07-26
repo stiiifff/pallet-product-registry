@@ -24,7 +24,10 @@ To register a product, one must send a transaction with a `productRegistry.regis
 
 ### Traits
 
-This pallet does not depend on any externally defined traits.
+This pallet depends on on the [FRAME EnsureOrigin System trait]
+```
+frame_support::traits::EnsureOrigin;
+```
 
 ### Pallets
 
@@ -66,9 +69,9 @@ std = [
 You should implement it's trait like so:
 
 ```rust
-/// Used for test_module
 impl product_registry::Trait for Runtime {
 	type Event = Event;
+	type CreateRoleOrigin = Origin;
 }
 ```
 
