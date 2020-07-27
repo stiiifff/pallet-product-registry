@@ -1,8 +1,12 @@
 // Creating mock runtime here
 
 use crate::{Module, Trait};
-use frame_support::{impl_outer_event, impl_outer_origin, parameter_types, weights::Weight};
+use core::marker::PhantomData;
+use frame_support::{
+    impl_outer_event, impl_outer_origin, parameter_types, traits::EnsureOrigin, weights::Weight,
+};
 use frame_system as system;
+use frame_system::RawOrigin;
 use sp_core::{sr25519, Pair, H256};
 use sp_runtime::{
     testing::Header,
@@ -70,11 +74,24 @@ impl timestamp::Trait for Test {
 
 impl Trait for Test {
     type Event = TestEvent;
+    type CreateRoleOrigin = MockOrigin<Test>;
 }
 
 pub type ProductRegistry = Module<Test>;
 pub type System = system::Module<Test>;
 pub type Timestamp = timestamp::Module<Test>;
+
+pub struct MockOrigin<T>(PhantomData<T>);
+
+impl<T: Trait> EnsureOrigin<T::Origin> for MockOrigin<T> {
+    type Success = T::AccountId;
+    fn try_origin(o: T::Origin) -> Result<Self::Success, T::Origin> {
+        o.into().and_then(|o| match o {
+            RawOrigin::Signed(ref who) => Ok(who.clone()),
+            r => Err(T::Origin::from(r)),
+        })
+    }
+}
 
 // This function basically just builds a genesis storage key/value store according to
 // our desired mockup.
