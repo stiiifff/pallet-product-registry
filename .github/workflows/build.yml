@@ -37,14 +37,14 @@ jobs:
       - name: Check Formatting
         run: cargo fmt --all -- --check
 
-      # - name: Unleash clippy
-      #   run: cargo clippy -- -D warnings -A deprecated
+      - name: Unleash clippy
+        run: cargo clippy -- -D warnings -A deprecated
 
       - name: Build Native
         run: cargo build
 
-      # - name: Build Wasm
-      #   run: cargo +nightly build --target wasm32-unknown-unknown --no-default-features
+      - name: Build Wasm
+        run: cargo +nightly build --target wasm32-unknown-unknown --no-default-features
 
       - name: Run tests
         run: cargo test
