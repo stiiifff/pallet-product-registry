@@ -37,8 +37,8 @@ jobs:
       - name: Check Formatting
         run: cargo fmt --all -- --check
 
-      - name: Unleash clippy
-        run: cargo clippy -- -D warnings -A deprecated
+      # - name: Unleash clippy
+      #   run: cargo clippy -- -D warnings -A deprecated
 
       - name: Build Native
         run: cargo build
